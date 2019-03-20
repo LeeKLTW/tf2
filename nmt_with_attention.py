@@ -130,13 +130,13 @@ def loss_function(real, pred):
     loss_ *= mask
     return tf.reduce_mean(loss_)
 
-
-def train_step(inp, targ, enc_hidden):
-    loss = 0
-    with tf.GragientTape() as tape:
-        enc_output, enc_hidden = encoder(inp,enc_hidden)
-        dec_hidden = enc_hidden
-        dec_input = tf.expand_dims([targ_lang.word_index[ ]])
+# todo
+# def train_step(inp, targ, enc_hidden):
+#     loss = 0
+#     with tf.GragientTape() as tape:
+#         enc_output, enc_hidden = encoder(inp,enc_hidden)
+#         dec_hidden = enc_hidden
+#         dec_input = tf.expand_dims([targ_lang.word_index[ ]])
 
 
 def main():
@@ -171,16 +171,19 @@ def main():
     # attention_result, attention_weights = attention_layer.call(query=sample_hidden, values=sample_output)
     # attention_result
     # attention_weights.shape
-
-    decoder = Decoder(vocab_targ_size,EMBEDDING_DIM,UNITS,BATCH_SIZE)
-    sample_decoder_output, _, _ = decoder.call(tf.random.uniform((64,1)),sample_hidden,sample_output)
-
-
+    #
+    # decoder = Decoder(vocab_targ_size,EMBEDDING_DIM,UNITS,BATCH_SIZE)
+    # sample_decoder_output, _, _ = decoder.call(tf.random.uniform((64,1)),sample_hidden,sample_output)
+    #
+    #
     optimizer = tf.keras.optimizers.Adam()
 
     checkpoint_dir = './training_checkpoints'
     checkpoint_prefix = os.path.join(checkpoint_dir,'ckpt')
     checkpoint = tf.train.Checkpoint(optimizer=optimizer,encoder=encoder,decoder=decoder)
+
+    # todo
+
 
 
 
