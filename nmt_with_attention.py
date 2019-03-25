@@ -204,10 +204,9 @@ def translate(sentence):
     attention_plot = attention_plot[:len(result.split(' ')), :len(sentence.split(' '))]
     plot_attention(attention_plot,sentence.split(' '),result.split(' '))
 
-translate('vi')
 
-translate(u'en casa')
-
+# translate('vi')
+# translate(u'en casa')
 
 
 def main():
