@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Implementation of transformer
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Layer
 
