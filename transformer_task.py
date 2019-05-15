@@ -40,74 +40,26 @@ def _pad_x(x):
     return pad_sequences(x, maxlen=NUM_WORDS)
 
 
-x_train, x_val, x_test = [_pad_x(x) for x in [x_train, x_val, x_test]]
+class MultiHeadAttention(Layer):
+    def __init__(self,n_head,size_per_head,mask_right=False,**kwargs):
+        self.n_head = n_head
+        self.size_per_head = size_per_head
+        self.output_dim = self.n_head * self.size_per_head
+        self.mask_right = mask_right
+        super(MultiHeadAttention,self).__init__(**kwargs)
 
-model = keras.models.Sequential(
-    [keras.layers.Embedding(MAX_FEATURE, 8, input_length=NUM_WORDS),
-     keras.layers.Dense(8, activation='relu'),
-     keras.layers.Flatten(),
-     keras.layers.Dense(NUM_CATEGORY, activation='softmax')])
+    def build(self,input_shape):
+        # query, key, value
+        self.WQ = self.add_weight(name='WQ', shape=(input_shape[0][-1], self.output_dim), initializer='glorot_initializer',trainable=True)
+        self.WK = self.add_weight(name='WK', shape=(input_shape[1][-1], self.output_dim), initializer='glorot_initializer',trainable=True)
+        self.WV = self.add_weight(name='WV', shape=(input_shape[2][-1], self.output_dim), initializer='glorot_initializer',trainable=True)
+        super(MultiHeadAttention,self).build(input_shape)
 
-model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-model.summary()
-hist = model.fit(x_train, y_train, epochs=10)
-print('Accuracy on train', hist.history['accuracy'][-1])
-model.evaluate(x_val, y_val)
-model.evaluate(x_test, y_test)
-
-
-# ref: https://github.com/Lsdefine/attention-is-all-you-need-keras/blob/master/transformer.py
-
-class LayerNormalization(Layer):
-    def __init__(self):
+    #todo
+    def mask(self,inputs, seq_len, mode='mul'):
         pass
 
-    def build(self, input_shape):
+    def __call__(self):
         pass
-
-    def __call__(self, x):
+    def compute_output_shape(self,input_shape):
         pass
-
-    def compute_output_shape(self, input_shape):
-        pass
-
-class ScaledDotProductAttention:
-    def __init__(self):
-        pass
-
-    def build(self, input_shape):
-        pass
-
-    def __call__(self, x):
-        pass
-
-class MultiHeadAttention:
-    def __init__(self):
-        pass
-
-    def build(self, input_shape):
-        pass
-
-class PositionwiseFeedForward:
-    def __init__(self):
-        pass
-    def __call__(self, x):
-        pass
-
-class EncoderLayer:
-    def __init__(self):
-        pass
-    def __call__(self, x):
-        pass
-
-class DecoderLayer:
-    def __init__(self):
-        pass
-    def __call__(self, x):
-        pass
-
-class Encoder:
-    def __init__(self):
-        pass
-
-
