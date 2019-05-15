@@ -87,14 +87,8 @@ class MultiHeadAttention:
         pass
 
     def __call__(self, x):
-        if len(x) == 3:
-            q_seq, k_seq, v_seq = x
-            q_len, v_len = None, None
-        elif len(x) == 5:
-            q_seq, k_seq, v_seq, q_len, v_len = x
-
-        q_seq = K.dot(q_seq, self.WQ)
-        q_seq = K.reshape(q_seq, (-1, K.shape(q_seq)[1], self.n_head, self.size_per_head))
+        # todo implement mode 1
+        pass
 
     def compute_output_shape(self, input_shape):
         pass
