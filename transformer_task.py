@@ -4,6 +4,8 @@ from sklearn.model_selection import train_test_split
 
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import backend as K
+
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.layers import Layer
@@ -40,26 +42,59 @@ def _pad_x(x):
     return pad_sequences(x, maxlen=NUM_WORDS)
 
 
-class MultiHeadAttention(Layer):
-    def __init__(self,n_head,size_per_head,mask_right=False,**kwargs):
+class ScaledDotProductAttention:
+    def __init__(self, dropout=0.1):
+        self.dropout = keras.layers.Dropout(dropout)
+
+    def __call__(self, q, k, v, mask):
+        x = K.dot(q, k)
+        x /= K.sqrt(K.shape(k)[-1])  # sclaed
+        if mask is not None:
+            pass  # todo mask
+        x = keras.layers.Activation('softmax')(x)
+        y = K.dot(x, v)
+        return y
+
+
+class MultiHeadAttention:
+    def __init__(self, n_head, size_per_head, mask_right=False, **kwargs):
         self.n_head = n_head
         self.size_per_head = size_per_head
         self.output_dim = self.n_head * self.size_per_head
-        self.mask_right = mask_right
-        super(MultiHeadAttention,self).__init__(**kwargs)
+        self.qs_layers = []
+        self.ks_layers = []
+        self.vs_layers = []
+        for _ in range(n_head):
+            self.qs_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(size_per_head, use_bias=False)))
+            self.ks_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(size_per_head, use_bias=False)))
+            self.vs_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(size_per_head, use_bias=False)))
 
-    def build(self,input_shape):
+        self.attention = ScaledDotProductAttention()
+        self.w_o = keras.layers.TimeDistributed(keras.layers.Dense(n_head * size_per_head))
+
+    def build(self, input_shape):
         # query, key, value
-        self.WQ = self.add_weight(name='WQ', shape=(input_shape[0][-1], self.output_dim), initializer='glorot_initializer',trainable=True)
-        self.WK = self.add_weight(name='WK', shape=(input_shape[1][-1], self.output_dim), initializer='glorot_initializer',trainable=True)
-        self.WV = self.add_weight(name='WV', shape=(input_shape[2][-1], self.output_dim), initializer='glorot_initializer',trainable=True)
-        super(MultiHeadAttention,self).build(input_shape)
+        self.WQ = self.add_weight(name='WQ', shape=(input_shape[0][-1], self.output_dim),
+                                  initializer='glorot_initializer', trainable=True)
+        self.WK = self.add_weight(name='WK', shape=(input_shape[1][-1], self.output_dim),
+                                  initializer='glorot_initializer', trainable=True)
+        self.WV = self.add_weight(name='WV', shape=(input_shape[2][-1], self.output_dim),
+                                  initializer='glorot_initializer', trainable=True)
+        super(MultiHeadAttention, self).build(input_shape)
 
-    #todo
-    def mask(self,inputs, seq_len, mode='mul'):
+    # todo shifted right
+    def mask(self, inputs, seq_len, mode='mul'):
         pass
 
-    def __call__(self):
-        pass
-    def compute_output_shape(self,input_shape):
+    def __call__(self, x):
+        if len(x) == 3:
+            q_seq, k_seq, v_seq = x
+            q_len, v_len = None, None
+        elif len(x) == 5:
+            q_seq, k_seq, v_seq, q_len, v_len = x
+
+        q_seq = K.dot(q_seq, self.WQ)
+        q_seq = K.reshape(q_seq, (-1, K.shape(q_seq)[1], self.n_head, self.size_per_head))
+
+    def compute_output_shape(self, input_shape):
         pass
