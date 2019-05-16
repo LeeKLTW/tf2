@@ -43,53 +43,116 @@ def _pad_x(x):
 
 
 class ScaledDotProductAttention:
-    def __init__(self, dropout=0.1):
-        self.dropout = keras.layers.Dropout(dropout)
+    def __init__(self, dropout_rate=0.1):
+        """
+        dropout_rate: A floating point number of [0, 1].
+        """
+        self.dropout = keras.layers.Dropout(dropout_rate)
 
     def __call__(self, q, k, v, mask):
-        x = K.dot(q, k)
-        x /= K.sqrt(K.shape(k)[-1])  # sclaed
+        """
+        Q: Packed queries. 3d tensor. [N, T_q, d_k].
+        K: Packed keys. 3d tensor. [N, T_k, d_k].
+        V: Packed values. 3d tensor. [N, T_k, d_v].
+        """
+        scale = K.sqrt(K.shape(k)[-1], dtype='float32')
+        attention = keras.layers.Lambda(lambda x: K.batch_dot(x[0], x[1], axes=[2, 2]) / scale)([q, k])  # why axes?
         if mask is not None:
             """This masking, combined with fact that the output embeddings are offset by one position, ensures that the
             predictions for position i can depend only on the known outputs at positions less than i. Set to -inf"""
-            masked = keras.layers.Lambda(lambda x: (-1e10)*(1-K.cast(x,'float32')))(mask)
-            masked = keras.layers.Add([x,masked])
-
-            pass  # todo mask
-        x = keras.layers.Activation('softmax')(x)
-        y = K.dot(x, v)
-        return y
+            masked = keras.layers.Lambda(lambda x: (-1e10) * (1 - K.cast(x, 'float32')))(mask)
+            attention = keras.layers.Add([attention, masked])
+        attention = keras.layers.Activation('softmax')(attention)
+        attention = self.dropout(attention)
+        head = keras.layers.Lambda(lambda x: K.batch_dot(x[0], x[1]))([attention, v])
+        return head, attention
 
 
 class MultiHeadAttention:
-    def __init__(self, n_head, size_per_head, mask_right=False, **kwargs):
+    def __init__(self, n_head, d_model, dropout, **kwargs):
         self.n_head = n_head
-        self.size_per_head = size_per_head
-        self.output_dim = self.n_head * self.size_per_head
+        self.d_k = self.d_v = d_model // n_head  # 3.2.2
+        self.dropout = dropout
         self.qs_layers = []
         self.ks_layers = []
         self.vs_layers = []
         for _ in range(n_head):
-            self.qs_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(size_per_head, use_bias=False)))
-            self.ks_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(size_per_head, use_bias=False)))
-            self.vs_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(size_per_head, use_bias=False)))
+            self.qs_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(self.d_k, use_bias=False)))
+            self.ks_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(self.d_k, use_bias=False)))
+            self.vs_layers.append(keras.layers.TimeDistributed(keras.layers.Dense(self.d_v, use_bias=False)))
 
         self.attention = ScaledDotProductAttention()
-        self.w_o = keras.layers.TimeDistributed(keras.layers.Dense(n_head * size_per_head))
+        self.w_o = keras.layers.TimeDistributed(keras.layers.Dense(d_model))
 
-    def build(self, input_shape):
-        # query, key, value
-        self.WQ = self.add_weight(name='WQ', shape=(input_shape[0][-1], self.output_dim),
-                                  initializer='glorot_initializer', trainable=True)
-        self.WK = self.add_weight(name='WK', shape=(input_shape[1][-1], self.output_dim),
-                                  initializer='glorot_initializer', trainable=True)
-        self.WV = self.add_weight(name='WV', shape=(input_shape[2][-1], self.output_dim),
-                                  initializer='glorot_initializer', trainable=True)
-        super(MultiHeadAttention, self).build(input_shape)
+    def __call__(self, q, k, v, mask=None):
+        multihead = []
+        multiattention = []
+        for i in range(self.n_head):
+            qs = self.qs_layers[i](q)
+            ks = self.ks_layers[i](k)
+            vs = self.vs_layers[i](k)
+            head, attention = self.attention(qs, ks, vs)
+            multihead.append(head)
+            multiattention.append(attention)
+        multihead = keras.layers.Concatenate()(multihead) if self.n_head > 1 else multihead[0]
+        multiattention = keras.layers.Concatenate()(multiattention) if self.n_head > 1 else multiattention[0]
 
-    def __call__(self, x):
-        # todo implement mode 1
-        pass
+        multihead = self.w_o(multihead)
+        multihead = keras.layers.Dropout(self.dropout)(multihead)
+        return multihead, multiattention
 
     def compute_output_shape(self, input_shape):
         pass
+
+
+class ADDNORM(Layer):
+    def __init__(self, eps=1e-6, **kwargs):
+        self.eps = eps
+        super(ADDNORM, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        self.gamma = self.add_weight(name='gamma', shape=input_shape[-1:], initializer=keras.initializers.Ones())
+        self.beta = self.add_weight(name='beta', shape=input_shape[-1:], initializer=keras.initializers.Zeros())
+        super(ADDNORM, self).build(input_shape)
+
+    def __call__(self, x, output):
+        """
+        :param x: residual input
+        :param output: sublayer output for input
+        :return:
+        """
+        mean = K.mean(output, axis=-1, keepdims=True)
+        std = K.std(output, axis=-1, keepdims=True)
+        output = self.gamma * (x - mean) / (std + self.eps) + self.beta  # normalized
+        output = keras.layers.Add()([output, x])  # Add, residual
+        return output
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+
+class PositionwiseFFN:
+    def __init__(self, d_model=512, d_ff=2048):
+        self.w_1 = keras.layers.Conv1D(d_ff, 1, activation='relu')
+        self.w_2 = keras.layers.Conv1D(d_model, 1)  # linear
+
+    def __call__(self, x):
+        output = self.w_1(x)
+        output = self.w_2(output)
+        return output
+
+
+class EncoderLayer:
+    def __init__(self, d_model, d_ff, n_head, dropout_rate=0.1):
+        self.self_attention_layer = MultiHeadAttention(n_head, d_model, dropout_rate)
+        self.addnorm1 = ADDNORM()
+        self.pos_ffn = PositionwiseFFN(d_model, d_ff)
+        self.addnorm2 = ADDNORM()()
+
+    def __call__(self, enc_inputs, mask):
+        """enc_inputs: input embedding after Positional Encoding."""
+        multihead, multiattention = self.self_attention_layer(enc_inputs, enc_inputs, enc_inputs, mask=mask)
+        multihead_addnorm = self.addnorm1(enc_inputs, multihead)
+        pos_ffn_output = self.pos_ffn(multihead_addnorm)
+        pos_ffn_output_addnorm = self.addnorm2(multihead_addnorm, pos_ffn_output)
+        return pos_ffn_output_addnorm, multiattention
