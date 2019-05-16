@@ -82,3 +82,9 @@ model.fit(x_train, y_train,
 score = model.evaluate(x_test, y_test, verbose=0)
 print('Test loss:', score[0])
 print('Test accuracy:', score[1])
+
+# You can now launch tensorboard with `tensorboard --logdir=./logs` on your
+# command line and then go to http://localhost:6006/#projector to view the
+# embeddings
+
+# Testing result: embedding & batch_size not available, but what-if tool is interesting in tf2
