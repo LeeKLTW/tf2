@@ -50,6 +50,11 @@ class ScaledDotProductAttention:
         x = K.dot(q, k)
         x /= K.sqrt(K.shape(k)[-1])  # sclaed
         if mask is not None:
+            """This masking, combined with fact that the output embeddings are offset by one position, ensures that the
+            predictions for position i can depend only on the known outputs at positions less than i. Set to -inf"""
+            masked = keras.layers.Lambda(lambda x: (-1e10)*(1-K.cast(x,'float32')))(mask)
+            masked = keras.layers.Add([x,masked])
+
             pass  # todo mask
         x = keras.layers.Activation('softmax')(x)
         y = K.dot(x, v)
@@ -81,10 +86,6 @@ class MultiHeadAttention:
         self.WV = self.add_weight(name='WV', shape=(input_shape[2][-1], self.output_dim),
                                   initializer='glorot_initializer', trainable=True)
         super(MultiHeadAttention, self).build(input_shape)
-
-    # todo shifted right
-    def mask(self, inputs, seq_len, mode='mul'):
-        pass
 
     def __call__(self, x):
         # todo implement mode 1
