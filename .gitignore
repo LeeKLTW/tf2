@@ -2,6 +2,7 @@ venv/
 .idea/
 training_checkpoints/
 __pycache__/
+logs/
 
 # Created by https://www.gitignore.io/api/pycharm+all
 # Edit at https://www.gitignore.io/?templates=pycharm+all
