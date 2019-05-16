@@ -169,16 +169,14 @@ class DecoderLayer:
         self.pos_ffn = PositionwiseFFN(d_model, d_ff)
         self.addnorm3 = ADDNORM()
 
-    # def __call__(self, enc_inputs, mask):
-    #     """enc_inputs: input embedding after Positional Encoding."""
-    #
-    #     m_multihead, m_multiattention = self.multi_head_attention(enc_inputs, enc_inputs, enc_inputs, mask=mask)
-    #     m_multihead_addnorm = self.addnorm1(enc_inputs, m_multihead)
-    #
-    #     multihead, multiattention = self.multi_head_attention(enc_inputs, enc_inputs, enc_inputs, mask=mask)
-    #     multihead_addnorm = self.addnorm1(enc_inputs, multihead)
-    #
-    #
-    #     pos_ffn_output = self.pos_ffn(multihead_addnorm)
-    #     pos_ffn_output_addnorm = self.addnorm2(multihead_addnorm, pos_ffn_output)
-    #     return pos_ffn_output_addnorm, multiattention
+    def __call__(self, enc_outputs, dec_inputs, dec_mask=None, enc_mask=None, dec_last_state=None):
+        dec_last_state = dec_inputs if dec_last_state is None else dec_last_state
+        m_multihead, dec_multiattention = self.masked_multi_head_attention(dec_inputs, dec_last_state, dec_last_state, mask=enc_mask)
+        m_multihead_addnorm = self.addnorm1(dec_inputs, m_multihead)
+
+        multihead, enc_multiattention = self.multi_head_attention(m_multihead_addnorm,enc_outputs, enc_outputs,mask=enc_mask)
+        multihead_addnorm = self.addnorm2(m_multihead , multihead)
+
+        pos_ffn_output = self.pos_ffn(multihead_addnorm)
+        pos_ffn_output_addnorm = self.addnorm2(multihead_addnorm, pos_ffn_output)
+        return pos_ffn_output_addnorm, dec_multiattention,enc_multiattention
