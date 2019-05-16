@@ -144,15 +144,41 @@ class PositionwiseFFN:
 
 class EncoderLayer:
     def __init__(self, d_model, d_ff, n_head, dropout_rate=0.1):
-        self.self_attention_layer = MultiHeadAttention(n_head, d_model, dropout_rate)
+        self.multi_head_attention = MultiHeadAttention(n_head, d_model, dropout_rate)
         self.addnorm1 = ADDNORM()
         self.pos_ffn = PositionwiseFFN(d_model, d_ff)
-        self.addnorm2 = ADDNORM()()
+        self.addnorm2 = ADDNORM()
 
     def __call__(self, enc_inputs, mask):
         """enc_inputs: input embedding after Positional Encoding."""
-        multihead, multiattention = self.self_attention_layer(enc_inputs, enc_inputs, enc_inputs, mask=mask)
+        multihead, multiattention = self.multi_head_attention(enc_inputs, enc_inputs, enc_inputs, mask=mask)
         multihead_addnorm = self.addnorm1(enc_inputs, multihead)
         pos_ffn_output = self.pos_ffn(multihead_addnorm)
         pos_ffn_output_addnorm = self.addnorm2(multihead_addnorm, pos_ffn_output)
         return pos_ffn_output_addnorm, multiattention
+
+class DecoderLayer:
+    def __init__(self, d_model, d_ff, n_head, dropout_rate=0.1):
+
+        self.masked_multi_head_attention = MultiHeadAttention(n_head, d_model, dropout_rate)
+        self.addnorm1 = ADDNORM()
+
+        self.multi_head_attention = MultiHeadAttention(n_head, d_model, dropout_rate)
+        self.addnorm2 = ADDNORM()
+
+        self.pos_ffn = PositionwiseFFN(d_model, d_ff)
+        self.addnorm3 = ADDNORM()
+
+    # def __call__(self, enc_inputs, mask):
+    #     """enc_inputs: input embedding after Positional Encoding."""
+    #
+    #     m_multihead, m_multiattention = self.multi_head_attention(enc_inputs, enc_inputs, enc_inputs, mask=mask)
+    #     m_multihead_addnorm = self.addnorm1(enc_inputs, m_multihead)
+    #
+    #     multihead, multiattention = self.multi_head_attention(enc_inputs, enc_inputs, enc_inputs, mask=mask)
+    #     multihead_addnorm = self.addnorm1(enc_inputs, multihead)
+    #
+    #
+    #     pos_ffn_output = self.pos_ffn(multihead_addnorm)
+    #     pos_ffn_output_addnorm = self.addnorm2(multihead_addnorm, pos_ffn_output)
+    #     return pos_ffn_output_addnorm, multiattention
