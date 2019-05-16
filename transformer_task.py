@@ -93,5 +93,3 @@ class MultiHeadAttention:
 
     def compute_output_shape(self, input_shape):
         pass
-
-# test here
