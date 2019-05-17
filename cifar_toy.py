@@ -86,6 +86,5 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument("-e", "--epochs", dest="epochs", type=int, default=1)
-    parser.add_argument("-", action="store_true")
     args, unparsed = parser.parse_known_args()
     main(args.epochs)
