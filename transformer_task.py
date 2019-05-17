@@ -189,21 +189,29 @@ class DecoderLayer:
         return pos_ffn_output_addnorm, dec_multiattention, enc_multiattention
 
 
-
 class Encoder:
-    def __init__(self,d_model, d_ff, n_head=8, n_layers=6, dropout_rate=0.1):
+    def __init__(self, d_model, d_ff, n_head=8, n_layers=6, dropout_rate=0.1):
         self.layers = [EncoderLayer(d_model, d_ff, n_head, dropout_rate) for _ in range(n_layers)]
 
-    def __call__(self,inputs_embedding,input_sequence,return_attentions=False):
+    def __call__(self, inputs_embedding, input_sequence, return_attentions=False):
         if return_attentions:
             attentions = []
-        # mask = keras.layers.Lambda(lambda )
+        x = inputs_embedding
+        for enc_layer in self.layers:
+            x,att = enc_layer(x)
+            if return_attentions: attentions.append(att)
+        return (x,attentions) if return_attentions else x
 
+
+
+class Deocoder:
+    def __init__(self):
+        pass
 
 class Transformer:
     def __init__(self):
-        self.input_embedding = None
-        self.positional_encoding = None
+        self.input_embedding = None # dot it here
+        self.positional_encoding = None # do it here
         self.output_embedding = None
         self.encoder = None
         self.decoder = None
