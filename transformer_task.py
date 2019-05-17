@@ -180,3 +180,12 @@ class DecoderLayer:
         pos_ffn_output = self.pos_ffn(multihead_addnorm)
         pos_ffn_output_addnorm = self.addnorm2(multihead_addnorm, pos_ffn_output)
         return pos_ffn_output_addnorm, dec_multiattention,enc_multiattention
+
+class Encoder:
+    pass
+    # def __init__(self,d_model, d_ff, n_head=6, dropout_rate=0.1):
+    #     self.layers =
+
+
+
+
