@@ -174,7 +174,7 @@ class DecoderLayer:
         self.pos_ffn = PositionwiseFFN(d_model, d_ff)
         self.addnorm3 = ADDNORM()
 
-    def __call__(self, enc_outputs, dec_inputs, dec_mask=None, enc_mask=None, dec_last_state=None):
+    def __call__(self, dec_inputs, enc_outputs, dec_mask=None, enc_mask=None, dec_last_state=None):
         dec_last_state = dec_inputs if dec_last_state is None else dec_last_state
         m_multihead, dec_multiattention = self.masked_multi_head_attention(dec_inputs, dec_last_state, dec_last_state,
                                                                            mask=enc_mask)
@@ -198,22 +198,56 @@ class Encoder:
             attentions = []
         x = inputs_embedding
         for enc_layer in self.layers:
-            x,att = enc_layer(x)
+            x, att = enc_layer(x)
             if return_attentions: attentions.append(att)
-        return (x,attentions) if return_attentions else x
+        return (x, attentions) if return_attentions else x
 
+
+def get_PAD_mask(q, k):  # todo check it latter
+    ones = K.expand_dims(K.ones_like(q, dtype='float32'), -1)
+    mask = K.cast(K.expand_dims(K.not_qual(k, 0), 1), 'float32')
+    mask = K.batch_dot(ones, mask, axes=[2, 1])
+    return mask
+
+
+def get_sub_mask(s):  # todo check it latter
+    len_s = K.shape(s)[1]
+    mask = K.cumsum(K.eye(len_s), 1)
+    return mask
 
 
 class Deocoder:
-    def __init__(self):
-        pass
+    def __init__(self, d_model, d_ff, n_head=8, n_layers=6, dropout_rate=0.1):
+        self.layers = [DecoderLayer(d_model, d_ff, n_head, dropout_rate) for _ in range(n_layers)]
+
+    def __call__(self, outputs_embedding, input_seq, output_seq, encoder_output, return_attentions=False):
+        if return_attentions:
+            encoder_attentions = []
+            decoder_attentions = []
+
+        dec_pad_mask = keras.layers.Lambda(lambda x: get_PAD_mask(x, x))(output_seq)
+        dec_sub_mask = keras.layers.Lambda(get_sub_mask)(output_seq)
+        dec_mask = keras.layers.Lambda(lambda x: K.minimum(x[0], x[1]))([dec_pad_mask, dec_sub_mask])
+        enc_mask = keras.layers.Lambda(lambda x: get_PAD_mask(x[0], x[1]))([output_seq, input_seq])
+
+        x = outputs_embedding
+        for dec_layer in self.layers:
+            x, dec_multiattention, enc_multiattention = dec_layer(x, encoder_output, dec_mask, enc_mask)
+            if return_attentions:
+                decoder_attentions.append(dec_multiattention)
+                encoder_attentions.append(enc_multiattention)
+        return (x, decoder_attentions, encoder_attentions) if return_attentions else x
+
+
 
 class Transformer:
     def __init__(self):
-        self.input_embedding = None # dot it here
-        self.positional_encoding = None # do it here
+        self.input_embedding = None  # dot it here
+        self.positional_encoding = None  # do it here
         self.output_embedding = None
         self.encoder = None
         self.decoder = None
         self.linear = None
         self.softmax = None
+
+
