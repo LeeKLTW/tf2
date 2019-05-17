@@ -3,12 +3,14 @@ from random import sample
 import numpy as np
 from tensorflow import keras
 
+batch_size = 16
+
+
 def main(epochs):
     (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
     NUM_CATEGORY = len(np.unique(np.concatenate([y_train, y_test])))
     y_train = keras.utils.to_categorical(y_train, NUM_CATEGORY)
     y_test = keras.utils.to_categorical(y_test, NUM_CATEGORY)
-
 
     def train_test_split(*arrays, **options):
         n_arrays = len(arrays)
@@ -45,7 +47,6 @@ def main(epochs):
             test_idx]
         return (x_train, y_train), (x_val, y_val)
 
-
     (x_train, y_train), (x_val, y_val) = train_test_split(x_train, y_train, test_size=0.1)
 
     cb_ckpt = keras.callbacks.ModelCheckpoint('weights.{epoch:02d}-{val_loss:.2f}.hdf5')
@@ -59,11 +60,14 @@ def main(epochs):
     model.add(keras.layers.Conv2D(32, (3, 3), padding='same', activation='relu'))
     model.add(keras.layers.Conv2D(16, (3, 3), padding='same', activation='relu'))
     model.add(keras.layers.MaxPooling2D((2, 2)))
+    model.add(keras.layers.Conv2D(8, (2, 2), padding='same', activation='relu'))
+    model.add(keras.layers.Conv2D(4, (2, 2), padding='same', activation='relu'))
+    model.add(keras.layers.MaxPooling2D((2, 2)))
     model.add(keras.layers.Flatten())
     model.add(keras.layers.Dropout(0.5))
-    model.add(keras.layers.Dense(1024, activation='relu'))
+    model.add(keras.layers.Dense(128, activation='relu'))
     model.add(keras.layers.Dropout(0.5))
-    model.add(keras.layers.Dense(1024, activation='relu'))
+    model.add(keras.layers.Dense(128, activation='relu'))
     model.add(keras.layers.Dropout(0.5))
     model.add(keras.layers.Dense(NUM_CATEGORY, activation='softmax'))
     model.summary()
@@ -71,14 +75,17 @@ def main(epochs):
     optimizer = keras.optimizers.Adam(0.8)
     model.compile(loss=loss, optimizer=optimizer, metrics=['acc'])
 
-    model.fit(x_train, y_train, validation_data=(x_val, y_val),epochs=epochs,callbacks=[cb_ckpt,cb_tboard,cb_csv])
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=epochs, batch_size=batch_size,
+              callbacks=[cb_ckpt, cb_tboard, cb_csv])
 
     model.evaluate(x_test, y_test)
 
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
+
     parser = ArgumentParser()
-    parser.add_argument("-e","--epochs",dest="epochs",type=int,default=1)
-    parser.add_argument("-",action="store_true")
+    parser.add_argument("-e", "--epochs", dest="epochs", type=int, default=1)
+    parser.add_argument("-", action="store_true")
     args, unparsed = parser.parse_known_args()
     main(args.epochs)
