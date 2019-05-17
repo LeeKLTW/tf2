@@ -52,6 +52,8 @@ def main(epochs):
     cb_ckpt = keras.callbacks.ModelCheckpoint('weights.{epoch:02d}-{val_loss:.2f}.hdf5')
     cb_tboard = keras.callbacks.TensorBoard()
     cb_csv = keras.callbacks.CSVLogger('cifar', separator=',', append=False)
+    cb_estop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+
 
     model = keras.models.Sequential()
     model.add(keras.layers.Conv2D(128, (3, 3), padding='same', activation='relu', input_shape=x_train.shape[1:]))
@@ -76,7 +78,7 @@ def main(epochs):
     model.compile(loss=loss, optimizer=optimizer, metrics=['acc'])
 
     model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=epochs, batch_size=batch_size,
-              callbacks=[cb_ckpt, cb_tboard, cb_csv])
+              callbacks=[cb_ckpt, cb_tboard, cb_csv,cb_estop])
 
     model.evaluate(x_test, y_test)
 
