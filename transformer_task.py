@@ -145,6 +145,7 @@ class PositionwiseFFN:
 class EncoderLayer:
     def __init__(self, d_model, d_ff, n_head, dropout_rate=0.1):
         self.multi_head_attention = MultiHeadAttention(n_head, d_model, dropout_rate)
+        self.dropout = keras.layers.Dropout(dropout_rate)
         self.addnorm1 = ADDNORM()
         self.pos_ffn = PositionwiseFFN(d_model, d_ff)
         self.addnorm2 = ADDNORM()
@@ -152,14 +153,18 @@ class EncoderLayer:
     def __call__(self, enc_inputs, mask):
         """enc_inputs: input embedding after Positional Encoding."""
         multihead, multiattention = self.multi_head_attention(enc_inputs, enc_inputs, enc_inputs, mask=mask)
+        multihead = self.dropout(multihead)
         multihead_addnorm = self.addnorm1(enc_inputs, multihead)
+
         pos_ffn_output = self.pos_ffn(multihead_addnorm)
+        pos_ffn_output = self.dropout(pos_ffn_output)
         pos_ffn_output_addnorm = self.addnorm2(multihead_addnorm, pos_ffn_output)
+
         return pos_ffn_output_addnorm, multiattention
+
 
 class DecoderLayer:
     def __init__(self, d_model, d_ff, n_head, dropout_rate=0.1):
-
         self.masked_multi_head_attention = MultiHeadAttention(n_head, d_model, dropout_rate)
         self.addnorm1 = ADDNORM()
 
@@ -171,21 +176,36 @@ class DecoderLayer:
 
     def __call__(self, enc_outputs, dec_inputs, dec_mask=None, enc_mask=None, dec_last_state=None):
         dec_last_state = dec_inputs if dec_last_state is None else dec_last_state
-        m_multihead, dec_multiattention = self.masked_multi_head_attention(dec_inputs, dec_last_state, dec_last_state, mask=enc_mask)
+        m_multihead, dec_multiattention = self.masked_multi_head_attention(dec_inputs, dec_last_state, dec_last_state,
+                                                                           mask=enc_mask)
         m_multihead_addnorm = self.addnorm1(dec_inputs, m_multihead)
 
-        multihead, enc_multiattention = self.multi_head_attention(m_multihead_addnorm,enc_outputs, enc_outputs,mask=enc_mask)
-        multihead_addnorm = self.addnorm2(m_multihead , multihead)
+        multihead, enc_multiattention = self.multi_head_attention(m_multihead_addnorm, enc_outputs, enc_outputs,
+                                                                  mask=enc_mask)
+        multihead_addnorm = self.addnorm2(m_multihead, multihead)
 
         pos_ffn_output = self.pos_ffn(multihead_addnorm)
         pos_ffn_output_addnorm = self.addnorm2(multihead_addnorm, pos_ffn_output)
-        return pos_ffn_output_addnorm, dec_multiattention,enc_multiattention
+        return pos_ffn_output_addnorm, dec_multiattention, enc_multiattention
+
+
 
 class Encoder:
-    pass
-    # def __init__(self,d_model, d_ff, n_head=6, dropout_rate=0.1):
-    #     self.layers =
+    def __init__(self,d_model, d_ff, n_head=8, n_layers=6, dropout_rate=0.1):
+        self.layers = [EncoderLayer(d_model, d_ff, n_head, dropout_rate) for _ in range(n_layers)]
+
+    def __call__(self,inputs_embedding,input_sequence,return_attentions=False):
+        if return_attentions:
+            attentions = []
+        # mask = keras.layers.Lambda(lambda )
 
 
-
-
+class Transformer:
+    def __init__(self):
+        self.input_embedding = None
+        self.positional_encoding = None
+        self.output_embedding = None
+        self.encoder = None
+        self.decoder = None
+        self.linear = None
+        self.softmax = None
