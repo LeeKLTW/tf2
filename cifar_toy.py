@@ -114,6 +114,6 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument("-e", "--epochs", dest="epochs", type=int, default=1)
-    parser.add_argument("-s", "--train_size", dest="train_size", type=int, default=30000)
+    parser.add_argument("-s", "--train_size", dest="train_size", type=int, default=25000)
     args, unparsed = parser.parse_known_args()
     main(args.epochs,args.train_size)
