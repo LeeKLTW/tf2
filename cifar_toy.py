@@ -51,7 +51,7 @@ def cast(array,n_batch = 100,astype='float32'):
         d1 = np.concatenate([d1,d2],axis=0)
     return d1
 
-def main(epochs):
+def main(epochs,train_size):
     (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
     # x_train = x_train.astype('float32') # numpy.uint8 => float32 MemoryError
     # x_test = x_test.astype('float32')
@@ -60,7 +60,7 @@ def main(epochs):
     # x_test = cast(x_test)
 
     # small dataset test
-    (x_train, y_train), (x_test, y_test) = (x_train[:10000], y_train[:10000]), (x_test[:1000], y_test[:1000])
+    (x_train, y_train), (x_test, y_test) = (x_train[:train_size], y_train[:train_size]), (x_test[:train_size], y_test[:train_size])
     x_train = x_train.astype('float32')
     x_test = x_test.astype('float32')
 
@@ -113,5 +113,6 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument("-e", "--epochs", dest="epochs", type=int, default=1)
+    parser.add_argument("-s", "--train_size", dest="train_size", type=int, default=20000)
     args, unparsed = parser.parse_known_args()
-    main(args.epochs)
+    main(args.epochs,args.epochs.train_size)
