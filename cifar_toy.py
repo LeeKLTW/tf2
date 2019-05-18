@@ -62,9 +62,6 @@ def main(epochs):
     model.add(keras.layers.Conv2D(32, (3, 3), padding='same', activation='relu'))
     model.add(keras.layers.Conv2D(16, (3, 3), padding='same', activation='relu'))
     model.add(keras.layers.MaxPooling2D((2, 2)))
-    model.add(keras.layers.Conv2D(8, (2, 2), padding='same', activation='relu'))
-    model.add(keras.layers.Conv2D(4, (2, 2), padding='same', activation='relu'))
-    model.add(keras.layers.MaxPooling2D((2, 2)))
     model.add(keras.layers.Flatten())
     model.add(keras.layers.Dropout(0.5))
     model.add(keras.layers.Dense(64, activation='relu'))
@@ -74,7 +71,7 @@ def main(epochs):
     model.add(keras.layers.Dense(NUM_CATEGORY, activation='softmax'))
     model.summary()
     loss = 'categorical_crossentropy'
-    optimizer = keras.optimizers.Adam(0.8)
+    optimizer = keras.optimizers.Adam()
     model.compile(loss=loss, optimizer=optimizer, metrics=['acc'])
 
     model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=epochs, batch_size=batch_size,
