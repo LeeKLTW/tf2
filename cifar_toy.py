@@ -42,10 +42,22 @@ def train_test_split(*arrays, **options):
     return (x_train, y_train), (x_val, y_val)
 
 
+def cast(array,n_batch = 100,astype='float32'):
+    n = len(array)
+    batch_size = int(n//n_batch)
+    d1 = array[0*batch_size:(0+1)*batch_size].astype(astype)
+    for i in range(1,n_batch):
+        d2 = array[i*batch_size:(i+1)*batch_size].astype(astype) # if exceed will get the last one
+        d1 = np.concatenate([d1,d2],axis=0)
+    return d1
+
+
 def main(epochs):
     (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
-    x_train = x_train.astype('float32')
-    x_test = x_test.astype('float32')
+    # x_train = x_train.astype('float32') # numpy.uint8 => float32 MemoryError
+    # x_test = x_test.astype('float32')
+    x_train = cast(x_train)
+    x_test = cast(x_test)
     x_train /= 255
     x_test /= 255
     NUM_CATEGORY = len(np.unique(np.concatenate([y_train, y_test])))
