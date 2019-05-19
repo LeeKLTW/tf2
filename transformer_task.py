@@ -241,7 +241,7 @@ class Deocoder:
 
 
 class Transformer:
-    def __init__(self):
+    def __init__(self, maxlen, d_model=512, d_ff=2048, n_head=8, d_v=64, layers=2, dropout=0.1):
         self.input_embedding = None  # dot it here
         self.positional_encoding = None  # do it here
         self.output_embedding = None
@@ -250,4 +250,19 @@ class Transformer:
         self.linear = None
         self.softmax = None
 
+class Transformer(keras.Model):
+    def __init__(self,in_dim=784, out_dim=10,d_model=512,n_layers=10,dp_rate=0.5):
+        self.n_model = d_model
+        self.n_layers = n_layers
+        self.dp_rate = dp_rate
+        self.out_dim = out_dim
 
+        super(Transformer,self).__init__(name='Transformer')
+
+        self.input_layer = keras.layers.Input(shape=(784,))
+        for i in range(self.n_layers):
+            exec(f"self.dense_{i+1} = keras.layers.Dense(d_model,activation='relu',name='dense_{i+1}')")
+            if self.dp_rate > 0:
+                exec(f"self.dp_{i + 1} = keras.layers.Dropout(dp_rate,name='dp_{i + 1}')")
+
+        self.output_layer = keras.layers.Dense(self.out_dim,activation='softmax')
