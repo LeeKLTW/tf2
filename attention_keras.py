@@ -46,15 +46,15 @@ class Attention(Layer):
 
     def build(self, input_shape):
         self.WQ = self.add_weight(name='WQ',
-                                  shape=(input_shape[0][-1], self.output_dim),
+                                  shape=(int(input_shape[0][-1]), self.output_dim),
                                   initializer='glorot_uniform',
                                   trainable=True)
         self.WK = self.add_weight(name='WK',
-                                  shape=(input_shape[1][-1], self.output_dim),
+                                  shape=(int(input_shape[1][-1]), self.output_dim),
                                   initializer='glorot_uniform',
                                   trainable=True)
         self.WV = self.add_weight(name='WV',
-                                  shape=(input_shape[2][-1], self.output_dim),
+                                  shape=(int(input_shape[2][-1]), self.output_dim),
                                   initializer='glorot_uniform',
                                   trainable=True)
         super(Attention, self).build(input_shape)
